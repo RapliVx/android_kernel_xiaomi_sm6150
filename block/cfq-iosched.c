@@ -34,7 +34,7 @@ static const u64 cfq_slice_sync = NSEC_PER_SEC / 10;
 static u64 cfq_slice_async = NSEC_PER_SEC / 25;
 static const int cfq_slice_async_rq = 2;
 static u64 cfq_slice_idle = 0;
-static u64 cfq_group_idle = NSEC_PER_SEC / 125;
+static u64 cfq_group_idle = 0;
 static const u64 cfq_target_latency = (u64)NSEC_PER_SEC * 3/10; /* 300 ms */
 static const int cfq_hist_divisor = 4;
 
@@ -4891,10 +4891,10 @@ static struct elv_fs_entry cfq_attrs[] = {
 	CFQ_ATTR(slice_async),
 	CFQ_ATTR(slice_async_us),
 	CFQ_ATTR(slice_async_rq),
-	CFQ_ATTR(slice_idle),
-	CFQ_ATTR(slice_idle_us),
+	CFQ_RO_ATTR(slice_idle),
+	CFQ_RO_ATTR(slice_idle_us),
 	CFQ_RO_ATTR(group_idle),
-	CFQ_ATTR(group_idle_us),
+	CFQ_RO_ATTR(group_idle_us),
 	CFQ_ATTR(low_latency),
 	CFQ_ATTR(target_latency),
 	CFQ_ATTR(target_latency_us),
