@@ -20,7 +20,7 @@
 #endif
 
 #ifdef CONFIG_USB_CONFIGFS_F_ACC
-extern int acc_ctrlrequest_composite(struct usb_composite_dev *cdev,
+extern int acc_ctrlrequest(struct usb_composite_dev *cdev,
 				const struct usb_ctrlrequest *ctrl);
 void acc_disconnect(void);
 #endif
@@ -170,7 +170,7 @@ static int usb_string_copy(const char *s, char **s_copy)
 		if (!str)
 			return -ENOMEM;
 	}
-	strcpy(str, s);
+	strlcpy(str, s, USB_MAX_STRING_WITH_NULL_LEN);
 	if (str[ret - 1] == '\n')
 		str[ret - 1] = '\0';
 	*s_copy = str;
@@ -302,11 +302,13 @@ static int unregister_gadget(struct gadget_info *gi)
 		return -ENODEV;
 
 	gi->unbinding = true;
+
 	ret = usb_gadget_unregister_driver(&gi->composite.gadget_driver);
 	if (ret)
 		return ret;
 
 	gi->unbinding = false;
+
 	kfree(gi->composite.gadget_driver.udc_name);
 	gi->composite.gadget_driver.udc_name = NULL;
 	return 0;
@@ -1681,7 +1683,7 @@ static int android_setup(struct usb_gadget *gadget,
 
 #ifdef CONFIG_USB_CONFIGFS_F_ACC
 	if (value < 0)
-		value = acc_ctrlrequest_composite(cdev, c);
+		value = acc_ctrlrequest(cdev, c);
 #endif
 
 	if (value < 0)

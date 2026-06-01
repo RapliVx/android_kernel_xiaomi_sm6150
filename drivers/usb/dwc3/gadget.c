@@ -1184,18 +1184,11 @@ static void __dwc3_prepare_one_trb(struct dwc3_ep *dep, struct dwc3_trb *trb,
 		trb->ctrl |= DWC3_TRB_CTRL_SID_SOFN(stream_id);
 
 	/*
-	 * As per data book 4.2.3.2TRB Control Bit Rules section
-	 *
-	 * The controller autonomously checks the HWO field of a TRB to determine if the
-	 * entire TRB is valid. Therefore, software must ensure that the rest of the TRB
-	 * is valid before setting the HWO field to '1'. In most systems, this means that
-	 * software must update the fourth DWORD of a TRB last.
-	 *
-	 * However there is a possibility of CPU re-ordering here which can cause
-	 * controller to observe the HWO bit set prematurely.
-	 * Add a write memory barrier to prevent CPU re-ordering.
+	 * Ensure that updates of buffer address and size happens
+	 * before we set the DWC3_TRB_CTRL_HWO so that core
+	 * does not process any stale TRB.
 	 */
-	wmb();
+	mb();
 	trb->ctrl |= DWC3_TRB_CTRL_HWO;
 
 	dwc3_ep_inc_enq(dep);
@@ -1632,18 +1625,11 @@ out:
 	return ret;
 }
 
-static void dwc3_gadget_wakeup_irq_work(struct irq_work *work)
-{
-	struct dwc3 *dwc = container_of(work, typeof(*dwc), wakeup_irq_work);
-
-	schedule_work(&dwc->wakeup_work);
-}
-
 static int dwc3_gadget_wakeup(struct usb_gadget *g)
 {
 	struct dwc3	*dwc = gadget_to_dwc(g);
 
-	irq_work_queue(&dwc->wakeup_irq_work);
+	schedule_work(&dwc->wakeup_work);
 	return 0;
 }
 
@@ -3942,10 +3928,12 @@ static irqreturn_t dwc3_thread_interrupt(int irq, void *_evt)
 
 	start_time = ktime_get();
 
+	local_bh_disable();
 	spin_lock_irqsave(&dwc->lock, flags);
 	dwc->bh_handled_evt_cnt[dwc->irq_dbg_index] = 0;
 	ret = dwc3_process_event_buf(evt);
 	spin_unlock_irqrestore(&dwc->lock, flags);
+	local_bh_enable();
 
 	dwc->bh_completion_time[dwc->irq_dbg_index] =
 		ktime_to_us(ktime_sub(ktime_get(), start_time));
@@ -4101,7 +4089,6 @@ int dwc3_gadget_init(struct dwc3 *dwc)
 	dwc->irq_gadget = irq;
 
 	INIT_WORK(&dwc->wakeup_work, dwc3_gadget_wakeup_work);
-	init_irq_work(&dwc->wakeup_irq_work, dwc3_gadget_wakeup_irq_work);
 
 	dwc->ep0_trb = dma_alloc_coherent(dwc->sysdev,
 					  sizeof(*dwc->ep0_trb) * 2,

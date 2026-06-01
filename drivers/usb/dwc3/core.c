@@ -1308,9 +1308,6 @@ static void dwc3_get_properties(struct dwc3 *dwc)
 	dwc->dis_metastability_quirk = device_property_read_bool(dev,
 				"snps,dis_metastability_quirk");
 
-	dwc->dis_split_quirk = device_property_read_bool(dev,
-				"snps,dis-split-quirk");
-
 	dwc->lpm_nyet_threshold = lpm_nyet_threshold;
 	dwc->tx_de_emphasis = tx_de_emphasis;
 
@@ -1440,7 +1437,7 @@ static int dwc3_probe(struct platform_device *pdev)
 		goto err0;
 	}
 
-	dwc->dwc_wq = alloc_ordered_workqueue("dwc_wq", WQ_HIGHPRI);
+	dwc->dwc_wq = alloc_ordered_workqueue("dwc_wq", 0);
 	if (!dwc->dwc_wq) {
 		dev_err(dev,
 			"%s: Unable to create workqueue dwc_wq\n", __func__);
@@ -1487,20 +1484,17 @@ static int dwc3_probe(struct platform_device *pdev)
 		}
 	}
 
-#ifdef CONFIG_IPC_LOGGING
 	dwc->dwc_ipc_log_ctxt = ipc_log_context_create(NUM_LOG_PAGES,
 					dev_name(dwc->dev), 0);
 	if (!dwc->dwc_ipc_log_ctxt)
-		dev_err(dwc->dev, "Error getting ipc_log_ctxt\n");
-#endif
+		dev_dbg(dwc->dev, "Error getting ipc_log_ctxt\n");
+
 	snprintf(dma_ipc_log_ctx_name, sizeof(dma_ipc_log_ctx_name),
 					"%s.ep_events", dev_name(dwc->dev));
-#ifdef CONFIG_IPC_LOGGING
 	dwc->dwc_dma_ipc_log_ctxt = ipc_log_context_create(NUM_LOG_PAGES,
 						dma_ipc_log_ctx_name, 0);
 	if (!dwc->dwc_dma_ipc_log_ctxt)
-		dev_err(dwc->dev, "Error getting ipc_log_ctxt for ep_events\n");
-#endif
+		dev_dbg(dwc->dev, "Error getting ipc_log_ctxt for ep_events\n");
 
 	dwc3_instance[count] = dwc;
 	dwc->index = count;
@@ -1544,8 +1538,8 @@ static int dwc3_remove(struct platform_device *pdev)
 	 */
 	res->start -= DWC3_GLOBALS_REGS_START;
 
-	dwc3_debugfs_exit(dwc);
 	dwc3_gadget_exit(dwc);
+	dwc3_debugfs_exit(dwc);
 
 	pm_runtime_allow(&pdev->dev);
 	pm_runtime_disable(&pdev->dev);
@@ -1755,26 +1749,10 @@ runtime_set_active:
 
 	return 0;
 }
-
-static void dwc3_complete(struct device *dev)
-{
-	struct dwc3	*dwc = dev_get_drvdata(dev);
-	u32		reg;
-
-	if (dwc->current_dr_role == DWC3_GCTL_PRTCAP_HOST &&
-			dwc->dis_split_quirk) {
-		reg = dwc3_readl(dwc->regs, DWC3_GUCTL3);
-		reg |= DWC3_GUCTL3_SPLITDISABLE;
-		dwc3_writel(dwc->regs, DWC3_GUCTL3, reg);
-	}
-}
-#else
-#define dwc3_complete NULL
 #endif /* CONFIG_PM_SLEEP */
 
 static const struct dev_pm_ops dwc3_dev_pm_ops = {
 	SET_SYSTEM_SLEEP_PM_OPS(dwc3_suspend, dwc3_resume)
-	.complete = dwc3_complete,
 	SET_RUNTIME_PM_OPS(dwc3_runtime_suspend, dwc3_runtime_resume,
 			dwc3_runtime_idle)
 };
@@ -1811,6 +1789,7 @@ static struct platform_driver dwc3_driver = {
 		.of_match_table	= of_match_ptr(of_dwc3_match),
 		.acpi_match_table = ACPI_PTR(dwc3_acpi_match),
 		.pm	= &dwc3_dev_pm_ops,
+		.probe_type = PROBE_FORCE_SYNCHRONOUS,
 	},
 };
 
