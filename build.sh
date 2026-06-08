@@ -108,7 +108,7 @@ fi
 echo -e "\nStarting compilation...\n"
 make O=out sweet_defconfig
 if [ "$gcc" = true ]; then
-	make O=out gcc-lto.config
+	make O=out gcc.config
 fi
 make -j$(nproc --all) O=out
 
