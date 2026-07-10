@@ -132,7 +132,7 @@ jobs:
         if: matrix.ksu == true
         run: |
           echo "INITIATING MAMBOSU PROTOCOL ..."
-          curl -LSs "https://raw.githubusercontent.com/RapliVx/KernelSU-Next/refs/heads/hookless/kernel/setup.sh" | bash -s hookless
+          curl -LSs "https://raw.githubusercontent.com/RapliVx/KernelSU/xxksu/kernel/setup.sh" | bash -s xxksu
 
       - name: "[MOD] :: KSU_PURGE"
         if: matrix.ksu == false
