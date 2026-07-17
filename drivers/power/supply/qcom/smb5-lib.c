@@ -8139,10 +8139,15 @@ irqreturn_t typec_state_change_irq_handler(int irq, void *data)
 		return IRQ_HANDLED;
 	}
 
-	msleep(100);
-
 	typec_mode = smblib_get_prop_typec_mode(chg);
-	
+
+	if (gpio_is_valid(chg->uart_en_gpio)) {
+		if (typec_mode == POWER_SUPPLY_TYPEC_SINK_AUDIO_ADAPTER)
+			gpio_set_value(chg->uart_en_gpio, 1);
+		else
+			gpio_set_value(chg->uart_en_gpio, 0);
+	}
+
 	if (chg->sink_src_mode != UNATTACHED_MODE
 			&& (typec_mode != chg->typec_mode))
 		smblib_handle_rp_change(chg, typec_mode);
