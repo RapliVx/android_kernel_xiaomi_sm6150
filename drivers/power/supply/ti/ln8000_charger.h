@@ -310,6 +310,7 @@ struct ln8000_info {
     bool chg_en;                /* charging enavbled */
     bool rcp_en;                /* reverse current protection enabled */
     int vbat_ovp_alarm_th;      /* vbat ovp alarm threshold */
+    bool otg_en;                /* OTG mode status */
     int vin_ovp_alarm_th;       /* vin ovp alarm threshold */
     int iin_ocp_alarm_th;       /* iin ocp alarm threshold */
 

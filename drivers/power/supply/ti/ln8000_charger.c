@@ -965,6 +965,11 @@ static int psy_chg_set_charging_enable(struct ln8000_info *info, int val)
 {
     int op_mode;
 
+    if (info->otg_en) {
+        ln_info("Ignoring charge request, OTG mode is active!\n");
+        return 0;
+    }
+
     if (val) {
         ln_info("start charging\n");
         op_mode = LN8000_OPMODE_SWITCHING;
@@ -1050,6 +1055,14 @@ static int ln8000_charger_set_property(struct power_supply *psy,
     case POWER_SUPPLY_PROP_CHARGING_ENABLED:
         ret = psy_chg_set_charging_enable(info, val->intval);
         break;
+    case POWER_SUPPLY_PROP_USB_OTG:
+        info->otg_en = val->intval;
+        if (info->otg_en) {
+            ln_info("OTG detected, forcing LN8000 to STANDBY\n");
+            ret = ln8000_change_opmode(info, LN8000_OPMODE_STANDBY);
+            info->chg_en = 0;
+        }
+        break;
     case POWER_SUPPLY_PROP_PRESENT:
         ret = psy_chg_set_present(info, val->intval);
         break;
@@ -1080,6 +1093,7 @@ static int ln8000_charger_is_writeable(struct power_supply *psy,
     case POWER_SUPPLY_PROP_CONSTANT_CHARGE_VOLTAGE:
     case POWER_SUPPLY_PROP_INPUT_CURRENT_LIMIT:
     case POWER_SUPPLY_PROP_TI_SET_BUS_PROTECTION_FOR_QC3:
+    case POWER_SUPPLY_PROP_USB_OTG:
         ret = 1;
         break;
     default:
@@ -1096,6 +1110,7 @@ static enum power_supply_property ln8000_charger_props[] = {
     POWER_SUPPLY_PROP_STATUS,
     POWER_SUPPLY_PROP_CONSTANT_CHARGE_VOLTAGE,
     POWER_SUPPLY_PROP_INPUT_CURRENT_LIMIT,
+    POWER_SUPPLY_PROP_USB_OTG,
     /* support TI extended propertis */
     POWER_SUPPLY_PROP_TI_BATTERY_PRESENT,
     POWER_SUPPLY_PROP_TI_VBUS_PRESENT,
