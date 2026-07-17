@@ -8139,13 +8139,10 @@ irqreturn_t typec_state_change_irq_handler(int irq, void *data)
 		return IRQ_HANDLED;
 	}
 
+	msleep(100);
+
 	typec_mode = smblib_get_prop_typec_mode(chg);
-
-	if (typec_mode == POWER_SUPPLY_TYPEC_NONE) {
-		msleep(150);
-		typec_mode = smblib_get_prop_typec_mode(chg);
-	}
-
+	
 	if (chg->sink_src_mode != UNATTACHED_MODE
 			&& (typec_mode != chg->typec_mode))
 		smblib_handle_rp_change(chg, typec_mode);
