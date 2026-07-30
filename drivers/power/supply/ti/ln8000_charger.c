@@ -966,7 +966,7 @@ static int psy_chg_set_charging_enable(struct ln8000_info *info, int val)
     int op_mode;
 
     if (info->otg_en) {
-        ln_info("Ignoring charge request, OTG mode is active!\n");
+        ln_info("charge request ignored, OTG is active\n");
         return 0;
     }
 
@@ -1058,9 +1058,14 @@ static int ln8000_charger_set_property(struct power_supply *psy,
     case POWER_SUPPLY_PROP_USB_OTG:
         info->otg_en = val->intval;
         if (info->otg_en) {
-            ln_info("OTG detected, forcing LN8000 to STANDBY\n");
+            ln_info("OTG enabled, soft-reset and force STANDBY\n");
+            ln8000_soft_reset(info); 
             ret = ln8000_change_opmode(info, LN8000_OPMODE_STANDBY);
             info->chg_en = 0;
+        } else {
+            ln_info("OTG disabled, soft-reset and re-init device\n");
+            ln8000_soft_reset(info);
+            ln8000_init_device(info);
         }
         break;
     case POWER_SUPPLY_PROP_PRESENT:
