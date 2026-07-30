@@ -1056,7 +1056,12 @@ static int ln8000_charger_set_property(struct power_supply *psy,
         ret = psy_chg_set_charging_enable(info, val->intval);
         break;
     case POWER_SUPPLY_PROP_USB_OTG:
+        if (info->otg_en == val->intval) {
+            break; 
+        }
+
         info->otg_en = val->intval;
+        
         if (info->otg_en) {
             ln_info("OTG enabled, soft-reset and force STANDBY\n");
             ln8000_soft_reset(info); 
