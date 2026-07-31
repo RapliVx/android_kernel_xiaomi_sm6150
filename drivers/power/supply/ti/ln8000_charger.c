@@ -998,10 +998,20 @@ static int psy_chg_set_present(struct ln8000_info *info, int val)
     bool usb_present = (bool)val;
 
     if (usb_present != info->usb_present) {
-        ln_info("changed usb_present [%d] -> [%d]\n", info->usb_present, usb_present);
+        ln_info("usb_present changed: %d -> %d\n", info->usb_present, usb_present);
+        
         if (usb_present) {
+            ln_info("cable plugged, soft-reset and init device\n");
+            ln8000_soft_reset(info);
             ln8000_init_device(info);
+        } else {
+            ln_info("cable unplugged, soft-reset and force STANDBY\n");
+            ln8000_soft_reset(info);
+            ln8000_change_opmode(info, LN8000_OPMODE_STANDBY);
+            info->chg_en = 0;
+            info->otg_en = 0;
         }
+        
         info->usb_present = usb_present;
     }
 
