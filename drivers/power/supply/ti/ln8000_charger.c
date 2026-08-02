@@ -1065,7 +1065,7 @@ static int ln8000_charger_set_property(struct power_supply *psy,
     case POWER_SUPPLY_PROP_CHARGING_ENABLED:
         ret = psy_chg_set_charging_enable(info, val->intval);
         break;
-    case POWER_SUPPLY_PROP_USB_OTG:
+   case POWER_SUPPLY_PROP_USB_OTG:
         if (info->otg_en == val->intval) {
             break; 
         }
@@ -1073,12 +1073,12 @@ static int ln8000_charger_set_property(struct power_supply *psy,
         info->otg_en = val->intval;
         
         if (info->otg_en) {
-            ln_info("OTG enabled, soft-reset and force STANDBY\n");
+            ln_info("OTG connected, executing soft-reset and init\n");
             ln8000_soft_reset(info); 
-            ret = ln8000_change_opmode(info, LN8000_OPMODE_STANDBY);
+            ln8000_init_device(info);
             info->chg_en = 0;
         } else {
-            ln_info("OTG disabled, soft-reset and re-init device\n");
+            ln_info("OTG disconnected, restoring device state\n");
             ln8000_soft_reset(info);
             ln8000_init_device(info);
         }
