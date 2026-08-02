@@ -1065,7 +1065,7 @@ static int ln8000_charger_set_property(struct power_supply *psy,
     case POWER_SUPPLY_PROP_CHARGING_ENABLED:
         ret = psy_chg_set_charging_enable(info, val->intval);
         break;
-   case POWER_SUPPLY_PROP_USB_OTG:
+    case POWER_SUPPLY_PROP_USB_OTG:
         if (info->otg_en == val->intval) {
             break; 
         }
