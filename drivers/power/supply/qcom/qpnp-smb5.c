@@ -3674,7 +3674,7 @@ static int smb5_init_hw(struct smb5 *chip)
     smblib_masked_write(chg, TYPE_C_MODE_CFG_REG,
                         TYPEC_POWER_ROLE_CMD_MASK, 0);
     
-    msleep(50)
+    msleep(50); 
 
 	return rc;
 }
