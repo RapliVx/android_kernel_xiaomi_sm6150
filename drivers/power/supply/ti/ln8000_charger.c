@@ -1508,17 +1508,9 @@ static int ln8000_parse_dt(struct ln8000_info *info)
     if (np == NULL)
        return -EINVAL;
 
-    if (info->client->irq == 0) {
-        pdata->irq_gpio = gpiod_get(dev, "irqb", GPIOD_IN);
-        if (LN8000_USE_GPIO(pdata)) {
-            info->client->irq = gpiod_to_irq(pdata->irq_gpio);
-            ln_info("[gpio] found valid GPIO, converted to IRQ: %d\n", info->client->irq);
-        } else {
-            ln_info("[gpio] unspecified or invalid GPIO descriptor\n");
-            pdata->irq_gpio = NULL;
-        }
-    }
-    ln_info("final info->client->irq = %d\n", info->client->irq);
+    info->client->irq = 0;
+    pdata->irq_gpio = NULL;
+    ln_info("irq: 0, passive mode\n");
 
     /* device configuration */
     ret = of_property_read_u32(np, "ln8000_charger,bat-ovp-threshold", &prop);
@@ -1550,23 +1542,23 @@ static int ln8000_parse_dt(struct ln8000_info *info)
 #ifdef LN8000_DUAL_CONFIG
     /* override device tree */
     if (info->dev_role == LN_PRIMARY) {
-       ln_info("disable TS_BAT monitor for primary device on dual-mode\n");
+       ln_info("dual-mode: primary ts_bat disabled\n");
        pdata->tbat_mon_disable = true;
     } else {
-       ln_info("disable VBAT_OVP and TS_BAT for secondary device on dual-mode\n");
+       ln_info("dual-mode: secondary vbat_ovp and ts_bat disabled\n");
        pdata->vbat_ovp_disable   = true;
        pdata->tbat_mon_disable   = true;
     }
 #endif
-    ln_info("vbat_ovp_disable = %d\n", pdata->vbat_ovp_disable);
-    ln_info("vbat_reg_disable = %d\n", pdata->vbat_reg_disable);
-    ln_info("iin_ocp_disable = %d\n", pdata->iin_ocp_disable);
-    ln_info("iin_reg_disable = %d\n", pdata->iin_reg_disable);
-    ln_info("tbus_mon_disable = %d\n", pdata->tbus_mon_disable);
-    ln_info("tbat_mon_disable = %d\n", pdata->tbat_mon_disable);
-    ln_info("tdie_prot_disable = %d\n", pdata->tdie_prot_disable);
-    ln_info("tdie_reg_disable = %d\n", pdata->tdie_reg_disable);
-    ln_info("revcurr_prot_disable = %d\n", pdata->revcurr_prot_disable);
+    ln_info("vbat_ovp_disable: %d\n", pdata->vbat_ovp_disable);
+    ln_info("vbat_reg_disable: %d\n", pdata->vbat_reg_disable);
+    ln_info("iin_ocp_disable: %d\n", pdata->iin_ocp_disable);
+    ln_info("iin_reg_disable: %d\n", pdata->iin_reg_disable);
+    ln_info("tbus_mon_disable: %d\n", pdata->tbus_mon_disable);
+    ln_info("tbat_mon_disable: %d\n", pdata->tbat_mon_disable);
+    ln_info("tdie_prot_disable: %d\n", pdata->tdie_prot_disable);
+    ln_info("tdie_reg_disable: %d\n", pdata->tdie_reg_disable);
+    ln_info("revcurr_prot_disable: %d\n", pdata->revcurr_prot_disable);
 
     return 0;
 }
