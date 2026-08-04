@@ -964,31 +964,31 @@ static int ln8000_charger_get_property(struct power_supply *psy,
 static int psy_chg_set_charging_enable(struct ln8000_info *info, int val)
 {
     int op_mode;
+    int vbus_uV = 0;
 
-    if (info->otg_en) {
-        ln_info("charge request ignored, OTG is active\n");
-        return 0;
-    }
+    ln8000_get_adc_data(info, LN8000_ADC_CH_VIN, &vbus_uV);
 
     if (val) {
-        ln_info("start charging\n");
-        op_mode = LN8000_OPMODE_SWITCHING;
+        if (vbus_uV < 6000000) {
+            ln_info("vbus: %dmV, setting standby (otg/5v)\n", vbus_uV / 1000);
+            op_mode = LN8000_OPMODE_STANDBY;
+            val = 0;
+        } else {
+            ln_info("vbus: %dmV, setting switching\n", vbus_uV / 1000);
+            op_mode = LN8000_OPMODE_SWITCHING;
+        }
     } else {
-        ln_info("stop charging\n");
+        ln_info("charging disabled, setting standby\n");
         op_mode = LN8000_OPMODE_STANDBY;
     }
 
-    /* when the start-up to charging, we need to disabled rcp. */
     ln8000_enable_rcp(info, 0);
 
     ln8000_change_opmode(info, op_mode);
     msleep(10);
     ln8000_update_opmode(info);
 
-    ln8000_print_regmap(info);
     info->chg_en = val;
-
-    ln_info("op_mode=%d\n", info->op_mode);
 
     return 0;
 }
@@ -998,18 +998,17 @@ static int psy_chg_set_present(struct ln8000_info *info, int val)
     bool usb_present = (bool)val;
 
     if (usb_present != info->usb_present) {
-        ln_info("usb_present changed: %d -> %d\n", info->usb_present, usb_present);
+        ln_info("usb_present: %d -> %d\n", info->usb_present, usb_present);
         
         if (usb_present) {
-            ln_info("cable plugged, soft-reset and init device\n");
+            ln_info("usb plugged, init device\n");
             ln8000_soft_reset(info);
             ln8000_init_device(info);
         } else {
-            ln_info("cable unplugged, soft-reset and force STANDBY\n");
+            ln_info("usb unplugged, force standby\n");
             ln8000_soft_reset(info);
             ln8000_change_opmode(info, LN8000_OPMODE_STANDBY);
             info->chg_en = 0;
-            info->otg_en = 0;
         }
         
         info->usb_present = usb_present;
@@ -1064,24 +1063,6 @@ static int ln8000_charger_set_property(struct power_supply *psy,
     switch (prop) {
     case POWER_SUPPLY_PROP_CHARGING_ENABLED:
         ret = psy_chg_set_charging_enable(info, val->intval);
-        break;
-    case POWER_SUPPLY_PROP_USB_OTG:
-        if (info->otg_en == val->intval) {
-            break; 
-        }
-
-        info->otg_en = val->intval;
-        
-        if (info->otg_en) {
-            ln_info("OTG connected, executing soft-reset and init\n");
-            ln8000_soft_reset(info); 
-            ln8000_init_device(info);
-            info->chg_en = 0;
-        } else {
-            ln_info("OTG disconnected, restoring device state\n");
-            ln8000_soft_reset(info);
-            ln8000_init_device(info);
-        }
         break;
     case POWER_SUPPLY_PROP_PRESENT:
         ret = psy_chg_set_present(info, val->intval);
