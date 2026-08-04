@@ -1641,7 +1641,12 @@ static int ln8000_probe(struct i2c_client *client, const struct i2c_device_id *i
     mutex_init(&info->irq_lock);
     i2c_set_clientdata(client, info);
 
+    ln_info("performing hardware soft reset...\n");
     ln8000_soft_reset(info);
+    
+    msleep(50); 
+    
+    ln_info("initializing device...\n");
     ln8000_init_device(info);
 
     ret = ln8000_psy_register(info);
