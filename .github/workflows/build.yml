@@ -59,11 +59,9 @@ jobs:
       - name: "[DOWNLOAD] :: CLANG_TOOLCHAIN"
         if: steps.cache-clang.outputs.cache-hit != 'true'
         run: |
-          echo "Downloading Clang..."
-          wget -q ${{ env.CLANG_URL }} -O aosp-clang.tar.gz
+          echo "Downloading and extracting Clang toolchain..."
           mkdir -p aosp-clang
-          tar -xf aosp-clang.tar.gz -C aosp-clang
-          rm -f aosp-clang.tar.gz
+          curl -LSs "${{ env.CLANG_URL }}" | tar -xzf - -C aosp-clang
 
   synchronization:
     name: "${{ matrix.unit }} // BUILD"
@@ -115,7 +113,7 @@ jobs:
       - name: "[SYSTEM] :: DEPENDENCIES"
         run: |
           sudo apt-get update -qq
-          sudo apt-get install -y --no-install-recommends \
+          sudo apt-get install -yqq --no-install-recommends \
           bc bison build-essential ccache curl flex g++-multilib gcc-multilib \
           git libncurses5-dev libssl-dev libxml2 libxml2-utils lzop make \
           python3 python3-pip unzip zip zlib1g-dev
@@ -142,7 +140,6 @@ jobs:
       - name: "[PATCH] :: MIUI_OPTIMIZATION"
         if: matrix.patch_miui == true
         run: |
-          # Inline python script for reliability over sed
           python3 -c "
           import os, re
           targets = ['dsi-panel-k6-38-0c-0a-fhd-dsc-video.dtsi', 'dsi-panel-k6-38-0e-0b-fhd-dsc-video.dtsi']
@@ -152,7 +149,6 @@ jobs:
                       path = os.path.join(root, file)
                       with open(path, 'r') as f: content = f.read()
                       
-                      # Safe regex replacement targeting exact properties
                       content = re.sub(r'qcom,mdss-pan-physical-width-dimension\s*=\s*<[0-9]+>;', 'qcom,mdss-pan-physical-width-dimension = <695>;', content)
                       content = re.sub(r'qcom,mdss-pan-physical-height-dimension\s*=\s*<[0-9]+>;', 'qcom,mdss-pan-physical-height-dimension = <1546>;', content)
                       
@@ -185,7 +181,7 @@ jobs:
             out/arch/arm64/boot/Image.gz
             out/arch/arm64/boot/dtb.img
             out/arch/arm64/boot/dtbo.img
-          compression-level: 9
+          compression-level: 0 
 
   human-instrumentality:
     name: "PROTOCOL: FINAL_DOGMA"
@@ -203,9 +199,8 @@ jobs:
       - name: "[PACKAGE] :: ANYKERNEL3_ZIP"
         run: |
           mkdir -p release_zips
-          git clone -q https://github.com/RapliVx/AnyKernel3.git -b sweet AnyKernel3
+          git clone -q --depth=1 https://github.com/RapliVx/AnyKernel3.git -b sweet AnyKernel3
           
-          # Create Banner once
           cat > AnyKernel3/banner << 'EOF'
            SORY                                  
            QXQVYXY                               
@@ -236,7 +231,7 @@ jobs:
            FranxxCORE // MAMBOSU PROTOCOL
            BY RapliVX
           EOF
-          # Process all variants in loop
+          
           for DIR in ./artifacts/*-unit; do
               VARIANT=$(basename "$DIR" -unit)
               echo "Packaging $VARIANT..."
@@ -246,7 +241,6 @@ jobs:
               cp -f $DIR/dtbo.img AnyKernel3/
               
               cd AnyKernel3
-              # Fast zip with -1 compression for speed, we zip again at release anyway
               zip -r1 "../release_zips/${KERNEL_NAME}-${VARIANT}-${CODENAME}-$(date +'%Y%m%d').zip" * -x .git README.md
               cd ..
           done
