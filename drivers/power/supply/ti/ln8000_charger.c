@@ -1076,6 +1076,23 @@ static int ln8000_charger_set_property(struct power_supply *psy,
     case POWER_SUPPLY_PROP_INPUT_CURRENT_LIMIT:
         ret = ln8000_set_iin_limit(info, val->intval);
         break;
+    case POWER_SUPPLY_PROP_USB_OTG:
+        if (info->otg_en == val->intval) {
+            break; 
+        }
+
+        info->otg_en = val->intval;
+        
+        if (info->otg_en) {
+            ln_info("otg enabled, forcing standby\n");
+            ln8000_change_opmode(info, LN8000_OPMODE_STANDBY);
+            info->chg_en = 0;
+        } else {
+            ln_info("otg disabled, resetting device\n");
+            ln8000_soft_reset(info);
+            ln8000_init_device(info);
+        }
+        break;
     default:
         ret = -EINVAL;
         break;
