@@ -1474,27 +1474,17 @@ static int ln8000_parse_dt(struct ln8000_info *info)
     if (np == NULL)
        return -EINVAL;
 
-    /* first we try to used client->irq */
     if (info->client->irq == 0) {
-        /* sencond we try to used irq_index info */
-        ret = of_property_read_u32(np, "ln8000_charger,irq_index", &prop);
-        if (ret < 0) {
-            ln_err("can't get irq_index(ret=%d)\n", ret);
-            prop = 0;
-        }
-        info->client->irq = prop;
-    }
-    ln_info("info->client->irq=%d\n", info->client->irq);
-
-    if (!info->client->irq) {
         pdata->irq_gpio = gpiod_get(dev, "irqb", GPIOD_IN);
         if (LN8000_USE_GPIO(pdata)) {
-           ln_info("[gpio] found valid GPIO/IRQ descriptor\n");
+            info->client->irq = gpiod_to_irq(pdata->irq_gpio);
+            ln_info("[gpio] found valid GPIO, converted to IRQ: %d\n", info->client->irq);
         } else {
-           ln_info("[gpio] unspecified or invalid GPIO descriptor\n");
-           pdata->irq_gpio = 0;
+            ln_info("[gpio] unspecified or invalid GPIO descriptor\n");
+            pdata->irq_gpio = NULL;
         }
     }
+    ln_info("final info->client->irq = %d\n", info->client->irq);
 
     /* device configuration */
     ret = of_property_read_u32(np, "ln8000_charger,bat-ovp-threshold", &prop);
@@ -1580,19 +1570,19 @@ static int ln8000_probe(struct i2c_client *client, const struct i2c_device_id *i
         return -ENOMEM;
     }
 
-	info->dev = &client->dev;
-	info->client = client;
+    info->dev = &client->dev;
+    info->client = client;
 
-	/* detect device on connected i2c bus */
-	ret = i2c_smbus_read_byte_data(client, LN8000_REG_DEVICE_ID);
-	if (IS_ERR_VALUE((unsigned long)ret)) {
-		ret = try_to_find_i2c_regess(info);
-		if (ret != 0x42) {
-			dev_err(&client->dev, "fail to detect ln8000 on i2c_bus(addr=0x%x)\n", client->addr);
-			return -ENODEV;
-		}
-	}
-	dev_info(&client->dev, "device id=0x%x\n", ret);
+    /* detect device on connected i2c bus */
+    ret = i2c_smbus_read_byte_data(client, LN8000_REG_DEVICE_ID);
+    if (IS_ERR_VALUE((unsigned long)ret)) {
+        ret = try_to_find_i2c_regess(info);
+        if (ret != 0x42) {
+            dev_err(&client->dev, "fail to detect ln8000 on i2c_bus(addr=0x%x)\n", client->addr);
+            return -ENODEV;
+        }
+    }
+    dev_info(&client->dev, "device id=0x%x\n", ret);
 
     info->dev_role = ln8000_get_dev_role(client);
     if (IS_ERR_VALUE((unsigned long)info->dev_role)) {
@@ -1639,18 +1629,18 @@ static int ln8000_probe(struct i2c_client *client, const struct i2c_device_id *i
     }
 
     if (client->irq) {
-		ret = devm_request_threaded_irq(&client->dev, client->irq,
-				NULL, ln8000_interrupt_handler,
-				IRQF_TRIGGER_FALLING | IRQF_ONESHOT,
-				"ln8000-charger-irq", info);
-		if (ret < 0) {
-			ln_err("request irq for irq=%d failed, ret =%d\n",
-							client->irq, ret);
+        ret = devm_request_threaded_irq(&client->dev, client->irq,
+                NULL, ln8000_interrupt_handler,
+                IRQF_TRIGGER_FALLING | IRQF_ONESHOT | IRQF_SHARED,
+                "ln8000-charger-irq", info);
+        if (ret < 0) {
+            ln_err("request irq for irq=%d failed, ret =%d\n",
+                            client->irq, ret);
             goto err_wakeup;
-		}
-		enable_irq_wake(client->irq);
+        }
+        enable_irq_wake(client->irq);
         INIT_DELAYED_WORK(&info->vac_ov_work, vac_ov_control_work);
-	} else {
+    } else {
         ln_info("don't support isr(irq=%d)\n", info->client->irq);
     }
 
