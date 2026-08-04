@@ -4463,23 +4463,23 @@ static int smb5_remove(struct platform_device *pdev)
 
 static void smb5_shutdown(struct platform_device *pdev)
 {
-	struct smb5 *chip = platform_get_drvdata(pdev);
-	struct smb_charger *chg = &chip->chg;
+    struct smb5 *chip = platform_get_drvdata(pdev);
+    struct smb_charger *chg = &chip->chg;
 
-	/* disable all interrupts */
-	smb5_disable_interrupts(chg);
+    /* disable all interrupts */
+    smb5_disable_interrupts(chg);
 
 	/* configure power role for UFP */
-	if (chg->connector_type == POWER_SUPPLY_CONNECTOR_TYPEC)
-		smblib_masked_write(chg, TYPE_C_MODE_CFG_REG,
-				TYPEC_POWER_ROLE_CMD_MASK, EN_SNK_ONLY_BIT);
+    // if (chg->connector_type == POWER_SUPPLY_CONNECTOR_TYPEC)
+    //     smblib_masked_write(chg, TYPE_C_MODE_CFG_REG,
+    //             TYPEC_POWER_ROLE_CMD_MASK, EN_SNK_ONLY_BIT);
 
-	/*fix PD bug.Set 0x1360 = 0x7 when shutdown*/
-	smblib_write(chg, USBIN_ADAPTER_ALLOW_CFG_REG, USBIN_ADAPTER_ALLOW_5V_TO_12V);
+    /*fix PD bug.Set 0x1360 = 0x7 when shutdown*/
+    smblib_write(chg, USBIN_ADAPTER_ALLOW_CFG_REG, USBIN_ADAPTER_ALLOW_5V_TO_12V);
 
-	/* force enable and rerun APSD */
-	smblib_apsd_enable(chg, true);
-	smblib_hvdcp_exit_config(chg);
+    /* force enable and rerun APSD */
+    smblib_apsd_enable(chg, true);
+    smblib_hvdcp_exit_config(chg);
 }
 
 static const struct of_device_id match_table[] = {
