@@ -966,6 +966,11 @@ static int psy_chg_set_charging_enable(struct ln8000_info *info, int val)
     int op_mode;
     int vbus_uV = 0;
 
+    if (info->otg_en) {
+        ln_info("ignoring charge_enable, otg active\n");
+        return 0;
+    }
+
     ln8000_get_adc_data(info, LN8000_ADC_CH_VIN, &vbus_uV);
 
     if (val) {
@@ -997,16 +1002,23 @@ static int psy_chg_set_present(struct ln8000_info *info, int val)
 {
     bool usb_present = (bool)val;
 
+    if (info->otg_en) {
+        ln_info("ignoring usb_present, otg active\n");
+        return 0;
+    }
+
     if (usb_present != info->usb_present) {
         ln_info("usb_present: %d -> %d\n", info->usb_present, usb_present);
         
         if (usb_present) {
             ln_info("usb plugged, init device\n");
             ln8000_soft_reset(info);
+            msleep(20);
             ln8000_init_device(info);
         } else {
             ln_info("usb unplugged, force standby\n");
             ln8000_soft_reset(info);
+            msleep(20);
             ln8000_change_opmode(info, LN8000_OPMODE_STANDBY);
             info->chg_en = 0;
         }
@@ -1062,9 +1074,11 @@ static int ln8000_charger_set_property(struct power_supply *psy,
 
     switch (prop) {
     case POWER_SUPPLY_PROP_CHARGING_ENABLED:
+        if (info->otg_en) return 0;
         ret = psy_chg_set_charging_enable(info, val->intval);
         break;
     case POWER_SUPPLY_PROP_PRESENT:
+        if (info->otg_en) return 0;
         ret = psy_chg_set_present(info, val->intval);
         break;
     case POWER_SUPPLY_PROP_TI_SET_BUS_PROTECTION_FOR_QC3:
@@ -1076,23 +1090,26 @@ static int ln8000_charger_set_property(struct power_supply *psy,
     case POWER_SUPPLY_PROP_INPUT_CURRENT_LIMIT:
         ret = ln8000_set_iin_limit(info, val->intval);
         break;
+    
     case POWER_SUPPLY_PROP_USB_OTG:
         if (info->otg_en == val->intval) {
             break; 
         }
-
+        
         info->otg_en = val->intval;
         
         if (info->otg_en) {
-            ln_info("otg enabled, forcing standby\n");
+            ln_info("otg active, entering safe passive mode\n");
             ln8000_change_opmode(info, LN8000_OPMODE_STANDBY);
             info->chg_en = 0;
         } else {
-            ln_info("otg disabled, resetting device\n");
+            ln_info("otg disabled, waking up device\n");
             ln8000_soft_reset(info);
+            msleep(50);
             ln8000_init_device(info);
         }
         break;
+
     default:
         ret = -EINVAL;
         break;
